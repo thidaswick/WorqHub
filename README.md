@@ -1,171 +1,129 @@
-🚀 WorkHub – Multi-Tenant MERN SaaS Platform
+# 🚀 WorkHub – Multi-Tenant MERN SaaS Platform
 
-WorkHub is a multi-tenant SaaS platform built using the MERN stack that helps SMEs manage work orders, inventory, customers, invoicing, and reports from a single shared system with strict tenant isolation.
+WorkHub is a **multi-tenant SaaS platform** built using the **MERN stack** that enables SMEs to manage **work orders, inventory, customers, invoicing, and reports** within a single shared system while maintaining **strict tenant data isolation**.
 
-The system is designed to be secure, scalable, and enterprise-ready, supporting thousands of tenants on shared infrastructure with a future upgrade path for dedicated enterprise deployments.
+The platform is designed to be **secure, scalable, and enterprise-ready**, supporting thousands of tenants on shared infrastructure with a clear upgrade path for enterprise clients.
 
-🧩 Key Features
+---
 
-🔐 Multi-Tenancy with Strong Isolation
+## 🧩 Key Features
 
-👥 Role-Based Access Control (Admin, Manager, Staff)
+- 🔐 Multi-Tenant Architecture with Strong Data Isolation
+- 👥 Role-Based Access Control (Admin, Manager, Staff)
+- 📦 Inventory Management with Immutable Audit Logs
+- 🧾 Tamper-Proof Invoice Generation
+- ⚙️ Asynchronous Background Job Processing
+- 📊 Reporting & Analytics
+- ☁️ Cloud-Ready and Scalable Design
+- 🏢 Enterprise Isolation Upgrade Path
 
-📦 Inventory Management with Audit Trail
+---
 
-🧾 Tamper-Proof Invoice Generation
+## 🏗️ Tech Stack
 
-⚙️ Asynchronous Background Processing
+### Frontend
+- React.js
+- Axios
+- React Router
+- Context API
 
-📊 Reporting & Analytics
+### Backend
+- Node.js
+- Express.js
+- JWT Authentication
+- Role-Based Access Control (RBAC)
 
-☁️ Cloud-Ready Architecture
+### Database
+- MongoDB
+- Mongoose ODM
 
-🏢 Enterprise Isolation Upgrade Path
+### Optional Infrastructure
+- AWS S3 (File Storage)
+- Redis / BullMQ (Background Jobs)
+- CDN (CloudFront / Vercel)
 
-🏗️ Tech Stack
-Frontend
+---
 
-React.js
+## 🧠 System Architecture Overview
 
-Axios
+WorkHub follows a **layered backend architecture** to ensure maintainability and scalability:
 
-React Router
 
-Context API
+### Layer Responsibilities
+- **Routes** – API endpoints
+- **Middlewares** – Authentication, authorization, tenant resolution
+- **Controllers** – Request & response handling
+- **Services** – Business workflow orchestration
+- **Engines** – Core domain logic
+- **Models** – Database schemas and access
 
-Backend
+---
 
-Node.js
+## 🏢 Multi-Tenancy Design
 
-Express.js
+- Shared MongoDB database
+- Every document contains a mandatory `tenantId`
+- Tenant resolution via:
+  - Subdomain (e.g. `clientA.workhub.com`)
+  - JWT token
+- `tenantId` is injected server-side and never trusted from the client
 
-JWT Authentication
+✅ Prevents cross-tenant data leakage  
+✅ Secure shared infrastructure model  
 
-Role-Based Access Control (RBAC)
+---
 
-Database
+## 🔐 Authentication & Authorization
 
-MongoDB
+- JWT-based authentication
+- Tokens include:
+  - `userId`
+  - `tenantId`
+  - `role`
+- Role-Based Access Control enforced at API level
+- Secure middleware-based authorization
 
-Mongoose ODM
+---
 
-Infrastructure (Optional / Cloud)
+## 📦 Inventory & Financial Integrity
 
-AWS S3 (File Storage)
+- All inventory changes recorded as **immutable transactions**
+- No direct stock manipulation
+- Invoices generated strictly from:
+  - Inventory transactions
+  - Labor/service entries
+- Ensures auditability and prevents financial tampering
 
-Redis / BullMQ (Background Jobs)
+---
 
-CDN (CloudFront / Vercel)
+## ⚙️ Asynchronous Processing
 
-🧠 System Architecture Overview
+Heavy operations are handled asynchronously using background job queues:
 
-WorkHub follows a layered backend architecture:
+- Invoice PDF generation
+- Email and notification sending
+- Low inventory alerts
+- Report aggregation
 
-routes/
-middlewares/
-controllers/
-services/
-engines/
-models/
+This keeps the user interface **fast and responsive**.
 
-Architecture Principles
+---
 
-Controllers handle HTTP requests only
+## 🧪 Environment Variables
 
-Services coordinate workflows
+Create a `.env` file in the backend directory:
 
-Domain Engines contain pure business logic
 
-Middleware enforces security & tenant isolation
+---
 
-Models handle database access
+## 🚀 Getting Started
 
-🏢 Multi-Tenancy Design
+### 1️⃣ Clone the Repository
 
-Single shared MongoDB database
-
-Every document contains a mandatory tenantId
-
-Tenant resolved via:
-
-Subdomain (clientA.workhub.com)
-
-JWT token
-
-tenantId is injected server-side and never trusted from the client
-
-✅ Prevents cross-tenant data access
-✅ Safe for shared infrastructure
-
-🔐 Authentication & Authorization
-
-JWT-based authentication
-
-Tokens contain:
-
-userId
-
-tenantId
-
-role
-
-Role-Based Access Control (RBAC) enforced at route level
-
-Secure middleware-based authorization
-
-📦 Inventory & Financial Integrity
-
-Inventory changes recorded as immutable transactions
-
-No direct stock manipulation
-
-Invoices generated strictly from:
-
-Inventory transactions
-
-Labor entries
-
-Prevents financial tampering and ensures auditability
-
-⚙️ Asynchronous Processing
-
-Heavy tasks are processed in the background using job queues:
-
-Invoice PDF generation
-
-Email notifications
-
-Low stock alerts
-
-Report aggregation
-
-This ensures a fast and responsive UI.
-
-🧪 Environment Variables
-
-Create a .env file in the backend directory:
-
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_secret_key
-JWT_EXPIRES_IN=1d
-
-🚀 Getting Started
-1️⃣ Clone the Repository
+```bash
 git clone https://github.com/your-username/workhub.git
 cd workhub
 
-2️⃣ Backend Setup
-cd backend
-npm install
-npm run dev
-
-3️⃣ Frontend Setup
-cd frontend
-npm install
-npm start
-
-📁 Project Structure
 workhub/
 │
 ├── backend/
@@ -183,34 +141,3 @@ workhub/
 │   └── package.json
 │
 └── README.md
-
-🏢 Enterprise Isolation Path
-
-For enterprise customers, WorkHub supports:
-
-Dedicated database
-
-Dedicated backend services
-
-Same codebase (config-driven)
-
-Higher SLA & performance guarantees
-
-📚 Use Cases
-
-Small & Medium Enterprises (SMEs)
-
-Service-based businesses
-
-Inventory-driven operations
-
-Multi-branch organizations
-
-🧑‍💻 Author
-
-WorkHub Development Team
-Built as a scalable MERN-based SaaS platform.
-
-📄 License
-
-This project is licensed under the MIT License.
