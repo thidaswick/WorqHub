@@ -1,0 +1,21 @@
+/**
+ * Customer model. Strictly scoped by tenantId.
+ */
+const mongoose = require('mongoose');
+
+const customerSchema = new mongoose.Schema(
+  {
+    tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
+    name: { type: String, required: true, trim: true },
+    email: { type: String, trim: true },
+    phone: { type: String, trim: true },
+    address: { type: String, trim: true },
+    billingAddress: { type: String, trim: true },
+    notes: { type: String },
+  },
+  { timestamps: true }
+);
+
+customerSchema.index({ tenantId: 1, name: 1 });
+
+module.exports = mongoose.model('Customer', customerSchema);
