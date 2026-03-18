@@ -25,14 +25,15 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      const normalizedEmail = String(email || '').toLowerCase().trim();
+      await login(normalizedEmail, password);
       navigate(from, { replace: true });
     } catch (err) {
       const msg =
         err.response?.data?.message ||
-        (err.code === 'ERR_NETWORK' || !err.response
+        (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED' || !err.response || [502, 503].includes(err.response?.status))
           ? 'Cannot reach server. Is the backend running on port 5000?'
-          : 'Login failed');
+          : 'Login failed';
       setError(msg);
     } finally {
       setLoading(false);

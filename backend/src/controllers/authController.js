@@ -12,10 +12,11 @@ exports.register = asyncHandler(async (req, res) => {
   if (!tenantId) throw new ApiError(400, 'tenantId required');
   const tenant = await Tenant.findById(tenantId);
   if (!tenant?.isActive) throw new ApiError(404, 'Tenant not found');
-  const existing = await User.findOne({ tenantId, email });
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+  const existing = await User.findOne({ tenantId, email: normalizedEmail });
   if (existing) throw new ApiError(400, 'Email already registered for this tenant');
   const passwordHash = await authService.hashPassword(password);
-  const user = await User.create({ tenantId, email, passwordHash, name, role: role || 'Staff' });
+  const user = await User.create({ tenantId, email: normalizedEmail, passwordHash, name, role: role || 'Staff' });
   const token = authService.generateToken(user);
   const { passwordHash: _, ...safe } = user.toObject();
   res.status(201).json({ success: true, user: safe, token });

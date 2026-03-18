@@ -82,6 +82,8 @@ const pathToTitle = {
   '/inventory/new': 'New inventory item',
   '/billing': 'Billing',
   '/billing/new': 'New invoice',
+  '/employees': 'Employees',
+  '/employees/new': 'New employee',
   '/reports': 'Reports',
   '/settings': 'Settings',
 };
