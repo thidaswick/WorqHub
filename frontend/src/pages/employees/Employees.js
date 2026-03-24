@@ -236,7 +236,10 @@ export default function Employees() {
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map((emp) => (
+              {filteredEmployees.map((emp) => {
+                const employeeKey = String(emp._id || '');
+                const assignedCount = assignedWorkCounts[employeeKey] || 0;
+                return (
                 <tr key={emp._id}>
                   <td className="employees-td-avatar">
                     {emp.photoUrl ? (
@@ -272,13 +275,13 @@ export default function Employees() {
                   <td>
                     <div className="employees-assigned-cell">
                       <Link
-                        to={`/work-orders?employeeId=${emp._id}&employeeName=${encodeURIComponent(emp.name || '')}`}
+                        to={`/work-orders?employeeId=${employeeKey}&employeeName=${encodeURIComponent(emp.name || '')}`}
                         className="btn btn-secondary employees-assigned-btn"
                       >
                         View assigned
                       </Link>
                       <span className="employees-assigned-count">
-                        {assignedWorkCounts[emp._id] || 0} work{(assignedWorkCounts[emp._id] || 0) === 1 ? '' : 's'}
+                        {assignedCount} work{assignedCount === 1 ? '' : 's'}
                       </span>
                     </div>
                   </td>
@@ -296,7 +299,8 @@ export default function Employees() {
                     />
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

@@ -6,6 +6,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import * as workOrdersApi from '../../api/workOrders';
 import * as customersApi from '../../api/customers';
 import * as employeesApi from '../../api/employees';
+import * as inventoryApi from '../../api/inventory';
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
@@ -21,7 +22,7 @@ const PRIORITY_OPTIONS = [
   { value: 'high', label: 'High' },
 ];
 
-const initialItem = () => ({ name: '', quantity: '', unit: 'unit' });
+const initialItem = () => ({ name: '', categoryId: '', quantity: '', unit: 'unit' });
 
 export default function WorkOrderForm() {
   const { id } = useParams();
@@ -33,6 +34,10 @@ export default function WorkOrderForm() {
   const [customers, setCustomers] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [inventoryItemsLoading, setInventoryItemsLoading] = useState(true);
+  const [inventoryItems, setInventoryItems] = useState([]);
   /** Controlled value for “add employee” dropdown (reset after each add). */
   const [assignEmployeePicker, setAssignEmployeePicker] = useState('');
   const [saving, setSaving] = useState(false);
@@ -65,6 +70,22 @@ export default function WorkOrderForm() {
   }, []);
 
   useEffect(() => {
+    inventoryApi
+      .listCategories()
+      .then((res) => setCategories(res.data?.data ?? res.data ?? []))
+      .catch(() => setCategories([]))
+      .finally(() => setCategoriesLoading(false));
+  }, []);
+
+  useEffect(() => {
+    inventoryApi
+      .list()
+      .then((res) => setInventoryItems(res.data?.data ?? res.data ?? []))
+      .catch(() => setInventoryItems([]))
+      .finally(() => setInventoryItemsLoading(false));
+  }, []);
+
+  useEffect(() => {
     if (isEdit && id) {
       workOrdersApi
         .get(id)
@@ -91,6 +112,12 @@ export default function WorkOrderForm() {
             items: Array.isArray(data.items) && data.items.length
               ? data.items.map((i) => ({
                   name: i.name ?? '',
+                  categoryId:
+                    typeof i.categoryId === 'object' && i.categoryId?._id
+                      ? String(i.categoryId._id)
+                      : i.categoryId
+                        ? String(i.categoryId)
+                        : '',
                   quantity: i.quantity ?? '',
                   unit: i.unit ?? 'unit',
                 }))
@@ -123,6 +150,27 @@ export default function WorkOrderForm() {
       items: prev.items.map((item, i) =>
         i === index ? { ...item, [field]: value } : item
       ),
+    }));
+  };
+
+  const handleItemNameChange = (index, value) => {
+    const match = inventoryItems.find(
+      (inv) => String(inv.name || '').trim().toLowerCase() === String(value || '').trim().toLowerCase()
+    );
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.map((item, i) => {
+        if (i !== index) return item;
+        // Auto-fill category when selected item matches inventory name.
+        if (!match) return { ...item, name: value };
+        const cid =
+          typeof match.categoryId === 'object' && match.categoryId?._id
+            ? String(match.categoryId._id)
+            : match.categoryId
+              ? String(match.categoryId)
+              : '';
+        return { ...item, name: value, categoryId: cid };
+      }),
     }));
   };
 
@@ -162,6 +210,7 @@ export default function WorkOrderForm() {
         .filter((i) => i.name.trim())
         .map((i) => ({
           name: i.name.trim(),
+          categoryId: i.categoryId || undefined,
           quantity: Number(i.quantity) || 0,
           unit: i.unit || 'unit',
         })),
@@ -384,10 +433,27 @@ export default function WorkOrderForm() {
                 <input
                   type="text"
                   className="input"
-                  placeholder="Item name"
+                  placeholder={inventoryItemsLoading ? 'Loading items…' : 'Item name'}
                   value={item.name}
-                  onChange={(e) => updateItem(index, 'name', e.target.value)}
+                  onChange={(e) => handleItemNameChange(index, e.target.value)}
+                  list="work-order-item-options"
                 />
+                <select
+                  className="input"
+                  value={item.categoryId || ''}
+                  onChange={(e) => updateItem(index, 'categoryId', e.target.value)}
+                  disabled={categoriesLoading || categories.length === 0}
+                  style={{ minWidth: 160 }}
+                >
+                  <option value="">
+                    {categoriesLoading ? 'Loading categories…' : categories.length ? 'Select category' : 'No categories'}
+                  </option>
+                  {categories.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="number"
                   className="input"
@@ -420,6 +486,13 @@ export default function WorkOrderForm() {
           <button type="button" className="btn btn-secondary repeatable-add" onClick={addItem}>
             + Add item
           </button>
+          {inventoryItems.length > 0 && (
+            <datalist id="work-order-item-options">
+              {inventoryItems.map((inv) => (
+                <option key={inv._id} value={inv.name} />
+              ))}
+            </datalist>
+          )}
         </div>
 
         <div className="form-actions">
