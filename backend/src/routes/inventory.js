@@ -18,8 +18,12 @@ router.use('/categories', categoriesRouter);
 
 router.get('/', inventoryController.list);
 router.post('/', inventoryController.create);
-/** On parent router so `/next-sku` is never matched as `/:id` (safe across Express versions). */
+/** On parent router so `/next-sku` is never matched as `/:id` (Express 5 still matches `/:id` first for some paths). */
 router.get('/next-sku', inventoryController.suggestNextSku);
+/** Under `/meta` so `/:id` cannot capture `low-stock` (Express 5 path matching). */
+const inventoryMetaRouter = express.Router();
+inventoryMetaRouter.get('/low-stock', inventoryController.lowStock);
+router.use('/meta', inventoryMetaRouter);
 
 const inventoryScoped = express.Router();
 inventoryScoped.get('/:id', inventoryController.get);

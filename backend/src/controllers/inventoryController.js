@@ -31,6 +31,31 @@ exports.list = asyncHandler(async (req, res) => {
   res.json({ success: true, data: items });
 });
 
+/** Items with quantity strictly below `threshold` (default 10), for dashboard alerts. */
+exports.lowStock = asyncHandler(async (req, res) => {
+  let threshold = Number(req.query.threshold);
+  if (!Number.isFinite(threshold) || threshold < 1) threshold = 10;
+  if (threshold > 10000) threshold = 10000;
+  let limit = Number(req.query.limit);
+  if (!Number.isFinite(limit) || limit < 1) limit = 20;
+  if (limit > 100) limit = 100;
+
+  const filter = { tenantId: req.tenantId, quantity: { $lt: threshold } };
+  const [count, items] = await Promise.all([
+    Inventory.countDocuments(filter),
+    Inventory.find(filter)
+      .sort({ quantity: 1, name: 1 })
+      .limit(limit)
+      .select('sku name quantity unit')
+      .lean(),
+  ]);
+
+  res.json({
+    success: true,
+    data: { threshold, count, items },
+  });
+});
+
 exports.get = asyncHandler(async (req, res) => {
   const doc = await Inventory.findOne({ _id: req.params.id, tenantId: req.tenantId })
     .populate('categoryId', 'name')

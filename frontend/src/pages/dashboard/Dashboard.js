@@ -19,6 +19,9 @@ import { useAuth } from '../../context/AuthContext';
 import * as workOrdersApi from '../../api/workOrders';
 import * as customersApi from '../../api/customers';
 import * as billingApi from '../../api/billing';
+import * as inventoryApi from '../../api/inventory';
+
+const LOW_STOCK_THRESHOLD = 10;
 
 const revenueExpenseData = [
   { month: 'Jan', value: 12 },
@@ -54,6 +57,8 @@ export default function Dashboard() {
   const { user, role } = useAuth();
   const [stats, setStats] = useState({ workOrders: 0, customers: 0, invoices: 0, totalRevenue: 0 });
   const [recentOrders, setRecentOrders] = useState([]);
+  const [lowStock, setLowStock] = useState({ count: 0, items: [], threshold: LOW_STOCK_THRESHOLD });
+  const [lowStockError, setLowStockError] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,7 +66,8 @@ export default function Dashboard() {
       workOrdersApi.list().catch(() => ({ data: [] })),
       customersApi.list().catch(() => ({ data: [] })),
       billingApi.listInvoices().catch(() => ({ data: [] })),
-    ]).then(([woRes, custRes, invRes]) => {
+      inventoryApi.lowStock({ threshold: LOW_STOCK_THRESHOLD, limit: 15 }).catch(() => ({ _failed: true })),
+    ]).then(([woRes, custRes, invRes, lowRes]) => {
       const orders = woRes.data?.data ?? woRes.data ?? [];
       const customers = custRes.data?.data ?? custRes.data ?? [];
       const invoices = invRes.data?.data ?? invRes.data ?? [];
@@ -83,6 +89,20 @@ export default function Dashboard() {
         { name: 'C5', amount: 'Rs. 2504/=', time: '1:57 PM', status: 'Pending' },
         { name: 'C6', amount: 'Rs. 1802/=', time: '1:57 PM', status: 'Completed' },
       ]);
+
+      if (lowRes?._failed) {
+        setLowStockError(true);
+      } else {
+        setLowStockError(false);
+        const lowPayload = lowRes?.data ?? lowRes;
+        if (lowPayload && typeof lowPayload.count === 'number') {
+          setLowStock({
+            count: lowPayload.count,
+            items: Array.isArray(lowPayload.items) ? lowPayload.items : [],
+            threshold: lowPayload.threshold ?? LOW_STOCK_THRESHOLD,
+          });
+        }
+      }
     }).finally(() => setLoading(false));
   }, []);
 
@@ -147,18 +167,81 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <Link to="/work-orders/new" className="dashboard-card dashboard-new-task">
-          <span className="dashboard-new-task-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </span>
-          <div className="dashboard-new-task-content">
-            <span className="dashboard-new-task-label">New task</span>
-            <span className="dashboard-new-task-hint">Create a work order</span>
+        <div className="dashboard-card dashboard-stack-card">
+          <div className="dashboard-stack-card-section">
+            <h3 className="dashboard-stack-card-heading">Inventory</h3>
+            {loading && (
+              <p className="dashboard-stock-placeholder">Checking stock levels…</p>
+            )}
+            {!loading && lowStockError && (
+              <p className="dashboard-stock-placeholder dashboard-stock-placeholder--warn" role="status">
+                Could not load inventory. Try again or open Inventory.
+              </p>
+            )}
+            {!loading && !lowStockError && lowStock.count > 0 && (
+              <div className="dashboard-low-stock-inline" role="alert">
+                <div className="dashboard-low-stock-inline-header">
+                  <span className="dashboard-low-stock-inline-icon" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                  </span>
+                  <strong className="dashboard-low-stock-inline-title">Low stock</strong>
+                </div>
+                <p className="dashboard-low-stock-inline-text">
+                  {lowStock.count === 1
+                    ? `1 item under ${lowStock.threshold} units.`
+                    : `${lowStock.count} items under ${lowStock.threshold} units.`}
+                </p>
+                <ul className="dashboard-low-stock-inline-list">
+                  {lowStock.items.map((row) => (
+                    <li key={row._id}>
+                      <span className="dashboard-low-stock-name">{row.name}</span>
+                      <span className="dashboard-low-stock-meta">
+                        {row.sku ? `${row.sku} · ` : ''}
+                        {row.quantity == null ? 0 : Number(row.quantity)} {row.unit || 'unit'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {lowStock.count > lowStock.items.length && (
+                  <p className="dashboard-low-stock-more">
+                    +{lowStock.count - lowStock.items.length} more
+                  </p>
+                )}
+                <Link to="/inventory" className="dashboard-low-stock-link">
+                  Manage inventory
+                </Link>
+              </div>
+            )}
+            {!loading && !lowStockError && lowStock.count === 0 && (
+              <div className="dashboard-stock-ok" role="status">
+                <span className="dashboard-stock-ok-title">Stock levels OK</span>
+                <p className="dashboard-stock-ok-text">
+                  No items below {LOW_STOCK_THRESHOLD} units.
+                </p>
+                <Link to="/inventory" className="dashboard-low-stock-link dashboard-stock-ok-link">
+                  View inventory
+                </Link>
+              </div>
+            )}
           </div>
-        </Link>
+          <div className="dashboard-stack-card-divider" />
+          <Link to="/work-orders/new" className="dashboard-new-task dashboard-new-task--stacked">
+            <span className="dashboard-new-task-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </span>
+            <div className="dashboard-new-task-content">
+              <span className="dashboard-new-task-label">New task</span>
+              <span className="dashboard-new-task-hint">Create a work order</span>
+            </div>
+          </Link>
+        </div>
 
         <div className="dashboard-card dashboard-revenue-card">
           <div className="dashboard-revenue-header">
