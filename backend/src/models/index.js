@@ -3,6 +3,7 @@ module.exports = {
   Tenant: require('./Tenant'),
   WorkOrder: require('./WorkOrder'),
   Customer: require('./Customer'),
+  CustomerCounter: require('./CustomerCounter'),
   Inventory: require('./Inventory'),
   InventoryCategory: require('./InventoryCategory'),
   Invoice: require('./Invoice'),

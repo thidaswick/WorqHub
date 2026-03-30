@@ -5,13 +5,15 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import * as inventoryApi from '../../api/inventory';
 import ActionButtons from '../../components/ActionButtons';
+import { sortInventoryByWidgetSku } from '../../utils/inventorySkuSort';
 
 function loadItems(setItems, setError) {
   return inventoryApi
     .list()
     .then((body) => {
       const rows = body?.data ?? body;
-      setItems(Array.isArray(rows) ? rows : []);
+      const list = Array.isArray(rows) ? rows : [];
+      setItems(sortInventoryByWidgetSku(list));
     })
     .catch((err) => {
       if (err.response?.status === 404) {

@@ -5,7 +5,7 @@ const Inventory = require('../models/Inventory');
 const InventoryCounter = require('../models/InventoryCounter');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
-const { formatSku, maxWidgetNumberFromSkus } = require('../utils/inventorySku');
+const { formatSku, maxWidgetNumberFromSkus, compareWidgetSkus } = require('../utils/inventorySku');
 
 /** Align counter with existing WIDGET-### SKUs so the next auto SKU does not collide. */
 async function syncInventoryCounterFromDb(tenantId) {
@@ -25,9 +25,9 @@ async function syncInventoryCounterFromDb(tenantId) {
 exports.list = asyncHandler(async (req, res) => {
   const filter = { tenantId: req.tenantId };
   const items = await Inventory.find(filter)
-    .sort({ name: 1 })
     .populate('categoryId', 'name')
     .lean();
+  items.sort((a, b) => compareWidgetSkus(a.sku, b.sku));
   res.json({ success: true, data: items });
 });
 

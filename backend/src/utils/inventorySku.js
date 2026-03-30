@@ -18,4 +18,27 @@ function maxWidgetNumberFromSkus(skus) {
   return maxN;
 }
 
-module.exports = { SKU_PREFIX, SKU_REGEX, formatSku, maxWidgetNumberFromSkus };
+/** Parsed WIDGET-### index for sorting; null if SKU does not match. */
+function widgetNumberFromSku(sku) {
+  const m = SKU_REGEX.exec(String(sku || '').trim());
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/** Sort WIDGET-001, WIDGET-002, … by numeric suffix; other SKUs after, alphabetically. */
+function compareWidgetSkus(skuA, skuB) {
+  const na = widgetNumberFromSku(skuA);
+  const nb = widgetNumberFromSku(skuB);
+  if (na != null && nb != null) return na - nb;
+  if (na != null) return -1;
+  if (nb != null) return 1;
+  return String(skuA || '').localeCompare(String(skuB || ''), undefined, { numeric: true, sensitivity: 'base' });
+}
+
+module.exports = {
+  SKU_PREFIX,
+  SKU_REGEX,
+  formatSku,
+  maxWidgetNumberFromSkus,
+  widgetNumberFromSku,
+  compareWidgetSkus,
+};

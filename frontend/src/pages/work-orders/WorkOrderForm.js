@@ -7,6 +7,14 @@ import * as workOrdersApi from '../../api/workOrders';
 import * as customersApi from '../../api/customers';
 import * as employeesApi from '../../api/employees';
 import * as inventoryApi from '../../api/inventory';
+import { sortInventoryByWidgetSku } from '../../utils/inventorySkuSort';
+
+/** API list endpoints resolve to `{ success, data: T[] }` (axios body, not the full response). */
+function apiListArray(body) {
+  if (body == null) return [];
+  const rows = body.data;
+  return Array.isArray(rows) ? rows : [];
+}
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
@@ -56,7 +64,7 @@ export default function WorkOrderForm() {
   useEffect(() => {
     customersApi
       .list()
-      .then((res) => setCustomers(res.data?.data ?? res.data ?? []))
+      .then((body) => setCustomers(apiListArray(body)))
       .catch(() => setCustomers([]))
       .finally(() => setCustomersLoading(false));
   }, []);
@@ -64,7 +72,7 @@ export default function WorkOrderForm() {
   useEffect(() => {
     employeesApi
       .list()
-      .then((res) => setEmployees(res.data?.data ?? res.data ?? []))
+      .then((body) => setEmployees(apiListArray(body)))
       .catch(() => setEmployees([]))
       .finally(() => setEmployeesLoading(false));
   }, []);
@@ -72,7 +80,7 @@ export default function WorkOrderForm() {
   useEffect(() => {
     inventoryApi
       .listCategories()
-      .then((res) => setCategories(res.data?.data ?? res.data ?? []))
+      .then((body) => setCategories(apiListArray(body)))
       .catch(() => setCategories([]))
       .finally(() => setCategoriesLoading(false));
   }, []);
@@ -80,7 +88,7 @@ export default function WorkOrderForm() {
   useEffect(() => {
     inventoryApi
       .list()
-      .then((res) => setInventoryItems(res.data?.data ?? res.data ?? []))
+      .then((body) => setInventoryItems(sortInventoryByWidgetSku(apiListArray(body))))
       .catch(() => setInventoryItems([]))
       .finally(() => setInventoryItemsLoading(false));
   }, []);
