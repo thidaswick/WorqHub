@@ -21,6 +21,8 @@ import Employees from '../pages/employees/Employees';
 import EmployeeForm from '../pages/employees/EmployeeForm';
 import Reports from '../pages/reports/Reports';
 import Settings from '../pages/settings/Settings';
+import Expenses from '../pages/expenses/Expenses';
+import ExpenseForm from '../pages/expenses/ExpenseForm';
 
 export function AppRoutes() {
   return (
@@ -53,6 +55,9 @@ export function AppRoutes() {
         <Route path="employees/new" element={<EmployeeForm />} />
         <Route path="employees/:id/edit" element={<EmployeeForm />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="expenses" element={<Expenses />} />
+        <Route path="expenses/new" element={<ExpenseForm />} />
+        <Route path="expenses/:id/edit" element={<ExpenseForm />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

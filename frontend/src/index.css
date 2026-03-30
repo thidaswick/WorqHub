@@ -1017,6 +1017,19 @@ textarea.input {
   text-decoration: underline;
 }
 
+.dashboard-expenses-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-sidebar-active);
+  text-decoration: none;
+}
+
+.dashboard-expenses-link:hover {
+  text-decoration: underline;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

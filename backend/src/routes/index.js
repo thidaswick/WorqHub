@@ -11,6 +11,7 @@ const inventoryCategories = require('./inventoryCategories');
 const billing = require('./billing');
 const employees = require('./employees');
 const reports = require('./reports');
+const expenses = require('./expenses');
 
 const router = express.Router();
 
@@ -23,5 +24,6 @@ router.use('/inventory-categories', inventoryCategories);
 router.use('/billing', billing);
 router.use('/employees', employees);
 router.use('/reports', reports);
+router.use('/expenses', expenses);
 
 module.exports = router;

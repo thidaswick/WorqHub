@@ -14,6 +14,7 @@ const navItems = [
   { to: '/customers', label: 'Customers', end: false, icon: 'users' },
   { to: '/inventory', label: 'Inventory', end: false, icon: 'box' },
   { to: '/billing', label: 'Billing', end: false, icon: 'dollar' },
+  { to: '/expenses', label: 'Expenses', end: false, icon: 'wallet' },
   { to: '/employees', label: 'Employees', end: false, icon: 'briefcase' },
   { to: '/reports', label: 'Reports', end: false, icon: 'chart' },
 ];
@@ -68,6 +69,13 @@ const NavIcon = ({ name, className }) => {
         <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
       </svg>
     ),
+    wallet: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+        <path d="M18 12a2 2 0 1 0 0 4h4v-4Z" />
+      </svg>
+    ),
   };
   return icons[name] || null;
 };
@@ -83,6 +91,8 @@ const pathToTitle = {
   '/inventory/new': 'New inventory item',
   '/billing': 'Billing',
   '/billing/new': 'New invoice',
+  '/expenses': 'Expenses',
+  '/expenses/new': 'Record expense',
   '/employees': 'Employees',
   '/employees/new': 'New employee',
   '/reports': 'Reports',
@@ -95,6 +105,7 @@ function getPageTitle(pathname) {
   if (/^\/customers\/[^/]+\/edit/.test(pathname)) return 'Edit customer';
   if (/^\/inventory\/[^/]+\/edit/.test(pathname)) return 'Edit inventory item';
   if (/^\/employees\/[^/]+\/edit/.test(pathname)) return 'Edit employee';
+  if (/^\/expenses\/[^/]+\/edit/.test(pathname)) return 'Edit expense';
   const base = pathname.split('/')[1];
   return pathToTitle[`/${base}`] || 'Dashboard';
 }

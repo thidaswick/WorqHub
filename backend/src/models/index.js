@@ -6,4 +6,5 @@ module.exports = {
   Inventory: require('./Inventory'),
   InventoryCategory: require('./InventoryCategory'),
   Invoice: require('./Invoice'),
+  Expense: require('./Expense'),
 };

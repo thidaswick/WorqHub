@@ -20,6 +20,7 @@ import * as workOrdersApi from '../../api/workOrders';
 import * as customersApi from '../../api/customers';
 import * as billingApi from '../../api/billing';
 import * as inventoryApi from '../../api/inventory';
+import * as expensesApi from '../../api/expenses';
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -170,6 +171,7 @@ function formatActivityTime(iso) {
 const DASHBOARD_QUICK_ACTIONS = [
   { to: '/work-orders/new', label: 'New work order', icon: 'clipboard' },
   { to: '/billing/new', label: 'New invoice', icon: 'dollar' },
+  { to: '/expenses/new', label: 'Record expense', icon: 'wallet' },
   { to: '/customers/new', label: 'New customer', icon: 'users' },
   { to: '/inventory/new', label: 'Add inventory', icon: 'box' },
   { to: '/employees/new', label: 'New employee', icon: 'briefcase' },
@@ -202,6 +204,14 @@ function QuickActionIcon({ name }) {
         <svg {...common}>
           <line x1="12" y1="1" x2="12" y2="23" />
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+      );
+    case 'wallet':
+      return (
+        <svg {...common}>
+          <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+          <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+          <path d="M18 12a2 2 0 1 0 0 4h4v-4Z" />
         </svg>
       );
     case 'users':
@@ -311,6 +321,12 @@ export default function Dashboard() {
   const [lowStock, setLowStock] = useState({ count: 0, items: [], threshold: LOW_STOCK_THRESHOLD });
   const [lowStockError, setLowStockError] = useState(false);
   const [activityFeed, setActivityFeed] = useState([]);
+  const [expenseSummary, setExpenseSummary] = useState({
+    totalAllTime: 0,
+    totalThisMonth: 0,
+    countAllTime: 0,
+    countThisMonth: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -319,7 +335,8 @@ export default function Dashboard() {
       customersApi.list().catch(() => ({ data: [] })),
       billingApi.listInvoices().catch(() => ({ data: [] })),
       inventoryApi.lowStock({ threshold: LOW_STOCK_THRESHOLD, limit: 15 }).catch(() => ({ _failed: true })),
-    ]).then(([woRes, custRes, invRes, lowRes]) => {
+      expensesApi.summary().catch(() => null),
+    ]).then(([woRes, custRes, invRes, lowRes, exSumRes]) => {
       const workOrders = Array.isArray(woRes?.data) ? woRes.data : woRes?.data?.data ?? [];
       const workOrderListTotal =
         typeof woRes?.total === 'number' ? woRes.total : Array.isArray(workOrders) ? workOrders.length : 0;
@@ -373,6 +390,16 @@ export default function Dashboard() {
             threshold: lowPayload.threshold ?? LOW_STOCK_THRESHOLD,
           });
         }
+      }
+
+      const exInner = exSumRes?.data;
+      if (exInner && typeof exInner.totalAllTime === 'number') {
+        setExpenseSummary({
+          totalAllTime: exInner.totalAllTime,
+          totalThisMonth: exInner.totalThisMonth,
+          countAllTime: exInner.countAllTime,
+          countThisMonth: exInner.countThisMonth,
+        });
       }
     }).finally(() => setLoading(false));
   }, []);
@@ -516,13 +543,29 @@ export default function Dashboard() {
           <div className="dashboard-card dashboard-revenue-card dashboard-revenue-card--expenses">
             <div className="dashboard-revenue-header">
               <span className="dashboard-revenue-label">Expenses</span>
-              <span className="dashboard-revenue-badge dashboard-revenue-badge--muted">Not tracked</span>
+              <span className="dashboard-revenue-badge">
+                {loading
+                  ? '—'
+                  : expenseSummary.countAllTime > 0
+                    ? `${expenseSummary.countAllTime} recorded`
+                    : 'None yet'}
+              </span>
             </div>
-            <p className="dashboard-revenue-hint">Vendor, payroll, and other costs (add a ledger later)</p>
+            <p className="dashboard-revenue-hint">Recorded expenses (all time)</p>
             <div className="dashboard-revenue-value">
-              {loading ? '—' : formatMoneyLkr(0)}
+              {loading ? '—' : formatMoneyLkr(expenseSummary.totalAllTime)}
               <span className="dashboard-revenue-currency"> LKR</span>
             </div>
+            {!loading && expenseSummary.countThisMonth > 0 && (
+              <p className="dashboard-revenue-sub">
+                This month: {formatMoneyLkr(expenseSummary.totalThisMonth)} LKR
+              </p>
+            )}
+            {!loading && (
+              <Link to="/expenses" className="dashboard-expenses-link">
+                Manage expenses
+              </Link>
+            )}
           </div>
         </div>
 
