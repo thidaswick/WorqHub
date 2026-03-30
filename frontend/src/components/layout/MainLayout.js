@@ -6,8 +6,10 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import logoLight from '../../assets/l_black.png';
-import logoDark from '../../assets/l_white.png';
+/** Full-color mark: use on light sidebar. */
+import logoForLightSidebar from '../../assets/l_black.svg';
+/** Simplified light-on-dark wordmark for dark sidebar. */
+import logoForDarkSidebar from '../../assets/l_white.svg';
 
 const navItems = [
   { to: '/', label: 'Dashboard', end: true, icon: 'dashboard' },
@@ -114,9 +116,9 @@ function getPageTitle(pathname) {
 export default function MainLayout() {
   const { user, role, logout } = useAuth();
   const { toggleTheme, isDark } = useTheme();
-  const sidebarLogo = isDark ? logoDark : logoLight;
   const { pathname } = useLocation();
   const pageTitle = getPageTitle(pathname);
+  const sidebarLogo = isDark ? logoForDarkSidebar : logoForLightSidebar;
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
