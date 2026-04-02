@@ -1,6 +1,6 @@
 /**
  * Main layout: sidebar + header. Use for tenant-scoped pages.
- * Mobile: sidebar collapses to hamburger overlay.
+ * Viewports under 768px: sidebar is a drawer (hamburger). 768px and up: persistent sidebar.
  */
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
@@ -125,6 +125,16 @@ export default function MainLayout() {
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const closeOnDesktop = () => {
+      if (mq.matches) setSidebarOpen(false);
+    };
+    mq.addEventListener('change', closeOnDesktop);
+    closeOnDesktop();
+    return () => mq.removeEventListener('change', closeOnDesktop);
+  }, []);
 
   const toggleSidebar = () => setSidebarOpen((o) => !o);
   const closeSidebar = () => setSidebarOpen(false);

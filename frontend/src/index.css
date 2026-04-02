@@ -2515,8 +2515,8 @@ textarea.input {
   }
 }
 
-/* ========== Mobile responsive ========== */
-@media (max-width: 991px) {
+/* ========== Phone / narrow: drawer nav (768px+ = persistent sidebar + no hamburger) ========== */
+@media (max-width: 767px) {
   .app-shell {
     flex-direction: column;
     padding: 0;
@@ -2583,24 +2583,8 @@ textarea.input {
     min-height: 100vh;
   }
 
-  .header {
-    padding: 0 1rem;
-  }
-
   .header-title {
     font-size: 1rem;
-  }
-
-  .header-user {
-    font-size: 0.8125rem;
-    gap: 0.5rem;
-  }
-
-  .header-user span:first-child {
-    max-width: 100px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .page {
@@ -2700,9 +2684,7 @@ textarea.input {
   .empty-state-icon {
     font-size: 2rem;
   }
-}
 
-@media (max-width: 767px) {
   .header {
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -2861,7 +2843,7 @@ textarea.input {
   }
 }
 
-@media (min-width: 992px) {
+@media (min-width: 768px) {
   .header-menu-btn {
     display: none;
   }
