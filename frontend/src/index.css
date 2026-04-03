@@ -302,8 +302,11 @@ textarea.input {
 
 .sidebar-logo-link {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  line-height: 0;
+  gap: 0.5rem;
+  min-width: 0;
+  line-height: 1.2;
   border-radius: var(--radius-md);
   transition: opacity 0.15s;
   text-decoration: none;
@@ -314,10 +317,27 @@ textarea.input {
 }
 
 .sidebar-logo-mark {
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
   object-fit: contain;
   display: block;
+}
+
+.sidebar-logo-text {
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #1f2937;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .sidebar .sidebar-logo-text {
+  color: #f9fafb;
 }
 
 .sidebar-nav-section {
