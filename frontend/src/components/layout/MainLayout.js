@@ -151,9 +151,17 @@ export default function MainLayout() {
   const { pathname } = useLocation();
   const pageTitle = getPageTitle(pathname);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  /** Which parent nav `to` has its submenu open (e.g. Inventory dropdown). */
+  const [sidebarDropdownKey, setSidebarDropdownKey] = useState(null);
 
   useEffect(() => {
     setSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (pathname.startsWith('/inventory/categories')) {
+      setSidebarDropdownKey('/inventory');
+    }
   }, [pathname]);
 
   useEffect(() => {
@@ -185,31 +193,82 @@ export default function MainLayout() {
           {navSections.map((section) => (
             <div key={section.heading} className="sidebar-nav-section">
               <div className="sidebar-nav-section-title">{section.heading}</div>
-              {section.items.map(({ to, label, end, icon, children, isActive: isActiveFn }) => (
-                <Fragment key={to}>
-                  <NavLink
-                    to={to}
-                    end={end}
-                    className={({ isActive }) =>
-                      `sidebar-link ${(typeof isActiveFn === 'function' ? isActiveFn(pathname) : isActive) ? 'active' : ''}`
-                    }
-                  >
-                    <NavIcon name={icon} />
-                    {label}
-                  </NavLink>
-                  {children?.map((sub) => (
+              {section.items.map(({ to, label, end, icon, children, isActive: isActiveFn }) => {
+                if (children?.length) {
+                  const dropdownOpen = sidebarDropdownKey === to;
+                  const panelId = `sidebar-dd-${to.replace(/^\//, '').replace(/\//g, '-')}`;
+                  return (
+                    <div key={to} className="sidebar-nav-dropdown">
+                      <div className="sidebar-nav-dropdown-head">
+                        <NavLink
+                          to={to}
+                          end={end}
+                          className={({ isActive }) =>
+                            `sidebar-link sidebar-link-dropdown-main ${(typeof isActiveFn === 'function' ? isActiveFn(pathname) : isActive) ? 'active' : ''}`
+                          }
+                        >
+                          <NavIcon name={icon} />
+                          {label}
+                        </NavLink>
+                        <button
+                          type="button"
+                          className="sidebar-nav-dropdown-toggle"
+                          aria-expanded={dropdownOpen}
+                          aria-controls={panelId}
+                          aria-label={`${label} submenu`}
+                          onClick={() => setSidebarDropdownKey((k) => (k === to ? null : to))}
+                        >
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`sidebar-nav-dropdown-chevron ${dropdownOpen ? 'is-open' : ''}`}
+                            aria-hidden
+                          >
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                        </button>
+                      </div>
+                      {dropdownOpen && (
+                        <div id={panelId} className="sidebar-nav-dropdown-panel" role="group">
+                          {children.map((sub) => (
+                            <NavLink
+                              key={sub.to}
+                              to={sub.to}
+                              end={sub.end}
+                              className={({ isActive }) =>
+                                `sidebar-link sidebar-link-sub sidebar-link-dropdown-item ${isActive ? 'active' : ''}`
+                              }
+                            >
+                              <NavIcon name={sub.icon} />
+                              {sub.label}
+                            </NavLink>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <Fragment key={to}>
                     <NavLink
-                      key={sub.to}
-                      to={sub.to}
-                      end={sub.end}
-                      className={({ isActive }) => `sidebar-link sidebar-link-sub ${isActive ? 'active' : ''}`}
+                      to={to}
+                      end={end}
+                      className={({ isActive }) =>
+                        `sidebar-link ${(typeof isActiveFn === 'function' ? isActiveFn(pathname) : isActive) ? 'active' : ''}`
+                      }
                     >
-                      <NavIcon name={sub.icon} />
-                      {sub.label}
+                      <NavIcon name={icon} />
+                      {label}
                     </NavLink>
-                  ))}
-                </Fragment>
-              ))}
+                  </Fragment>
+                );
+              })}
             </div>
           ))}
         </nav>

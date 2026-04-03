@@ -6,6 +6,13 @@ import { Link } from 'react-router-dom';
 import * as inventoryApi from '../../api/inventory';
 import { getApiErrorMessage } from '../../api/errors';
 
+const DUPLICATE_CATEGORY_ALERT = 'This category already exists.';
+
+function isDuplicateCategoryName(categories, nameTrimmed) {
+  const lower = nameTrimmed.toLowerCase();
+  return categories.some((c) => String(c?.name ?? '').trim().toLowerCase() === lower);
+}
+
 export default function InventoryCategoriesRegister() {
   const [categories, setCategories] = useState([]);
   const [name, setName] = useState('');
@@ -37,6 +44,10 @@ export default function InventoryCategoriesRegister() {
       setError('Enter a category name to register.');
       return;
     }
+    if (isDuplicateCategoryName(categories, trimmed)) {
+      setError(DUPLICATE_CATEGORY_ALERT);
+      return;
+    }
     setSaving(true);
     inventoryApi
       .createCategory(trimmed)
@@ -46,7 +57,16 @@ export default function InventoryCategoriesRegister() {
         return loadCategories();
       })
       .catch((err) => {
-        setError(getApiErrorMessage(err, 'Failed to register category'));
+        const msg = getApiErrorMessage(err, 'Failed to register category');
+        const status = err.response?.status;
+        const looksLikeDuplicate =
+          status === 400 &&
+          /already|duplicate|same name|exists/i.test(msg);
+        if (looksLikeDuplicate) {
+          setError(DUPLICATE_CATEGORY_ALERT);
+        } else {
+          setError(msg);
+        }
       })
       .finally(() => setSaving(false));
   };
@@ -108,7 +128,10 @@ export default function InventoryCategoriesRegister() {
               type="text"
               className="input"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError('');
+              }}
               placeholder="e.g. Raw materials, Tools, Consumables"
               autoComplete="off"
             />
