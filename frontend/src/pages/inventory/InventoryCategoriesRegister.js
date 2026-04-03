@@ -75,7 +75,7 @@ export default function InventoryCategoriesRegister() {
   return (
     <>
       <div className="page-toolbar">
-        <h2 className="page-title">Register categories</h2>
+        <h2 className="page-title">Category registration</h2>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Link to="/inventory" className="btn btn-secondary">
             Back to inventory

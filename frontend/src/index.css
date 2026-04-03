@@ -391,6 +391,18 @@ textarea.input {
   font-weight: 600;
 }
 
+.sidebar-link-sub {
+  padding: 0.5rem 1rem 0.5rem 2.35rem;
+  margin-bottom: 0.125rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.sidebar-link-sub svg {
+  width: 16px;
+  height: 16px;
+}
+
 [data-theme="dark"] .sidebar .sidebar-link {
   border-radius: 0.5rem;
 }

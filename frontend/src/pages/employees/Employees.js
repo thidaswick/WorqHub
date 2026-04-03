@@ -122,7 +122,7 @@ export default function Employees() {
           </svg>
         </div>
         <div>
-          <p className="employees-intro-title">Team directory</p>
+          <p className="employees-intro-title">Employee directory</p>
           <p className="employees-intro-text">
             Manage employee records, departments, and contact details. Use search and filters to find people quickly.
           </p>
@@ -206,7 +206,7 @@ export default function Employees() {
               </svg>
             </div>
             <h3 className="empty-state-title">No employees yet</h3>
-            <p className="empty-state-text">Add your team so you can track roles, departments, and contact info in one place.</p>
+            <p className="empty-state-text">Add employees so you can track roles, departments, and contact info in one place.</p>
             <Link to="/employees/new" className="btn btn-primary">
               Add employee
             </Link>

@@ -2,7 +2,7 @@
  * Main layout: sidebar + header. Use for tenant-scoped pages.
  * Viewports under 768px: sidebar is a drawer (hamburger). 768px and up: persistent sidebar.
  */
-import React, { useState, useEffect } from 'react';
+import React, { Fragment, useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -16,8 +16,17 @@ function getNavSections(includeExpenses) {
       items: [
         { to: '/', label: 'Dashboard', end: true, icon: 'dashboard' },
         { to: '/work-orders', label: 'Work Orders', end: false, icon: 'clipboard' },
-        { to: '/inventory', label: 'Inventory', end: false, icon: 'box' },
-        { to: '/employees', label: 'Team', end: false, icon: 'briefcase' },
+        {
+          to: '/inventory',
+          label: 'Inventory',
+          icon: 'box',
+          isActive: (p) =>
+            p === '/inventory' ||
+            p === '/inventory/new' ||
+            /^\/inventory\/[^/]+\/edit/.test(p),
+          children: [{ to: '/inventory/categories/register', label: 'Category registration', end: true, icon: 'tag' }],
+        },
+        { to: '/employees', label: 'Employee', end: false, icon: 'briefcase' },
       ],
     },
     {
@@ -64,6 +73,12 @@ const NavIcon = ({ name, className }) => {
         <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
       </svg>
     ),
+    tag: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+        <line x1="7" y1="7" x2="7.01" y2="7" />
+      </svg>
+    ),
     dollar: (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
         <line x1="12" y1="1" x2="12" y2="23" />
@@ -107,13 +122,13 @@ const pathToTitle = {
   '/customers': 'Customers',
   '/customers/new': 'New customer',
   '/inventory': 'Inventory',
-  '/inventory/categories/register': 'Register categories',
+  '/inventory/categories/register': 'Category registration',
   '/inventory/new': 'New inventory item',
   '/billing': 'Invoices',
   '/billing/new': 'New invoice',
   '/expenses': 'Expenses',
   '/expenses/new': 'Record expense',
-  '/employees': 'Team',
+  '/employees': 'Employee',
   '/employees/new': 'New employee',
   '/reports': 'Reports',
   '/settings': 'Settings',
@@ -170,16 +185,30 @@ export default function MainLayout() {
           {navSections.map((section) => (
             <div key={section.heading} className="sidebar-nav-section">
               <div className="sidebar-nav-section-title">{section.heading}</div>
-              {section.items.map(({ to, label, end, icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                >
-                  <NavIcon name={icon} />
-                  {label}
-                </NavLink>
+              {section.items.map(({ to, label, end, icon, children, isActive: isActiveFn }) => (
+                <Fragment key={to}>
+                  <NavLink
+                    to={to}
+                    end={end}
+                    className={({ isActive }) =>
+                      `sidebar-link ${(typeof isActiveFn === 'function' ? isActiveFn(pathname) : isActive) ? 'active' : ''}`
+                    }
+                  >
+                    <NavIcon name={icon} />
+                    {label}
+                  </NavLink>
+                  {children?.map((sub) => (
+                    <NavLink
+                      key={sub.to}
+                      to={sub.to}
+                      end={sub.end}
+                      className={({ isActive }) => `sidebar-link sidebar-link-sub ${isActive ? 'active' : ''}`}
+                    >
+                      <NavIcon name={sub.icon} />
+                      {sub.label}
+                    </NavLink>
+                  ))}
+                </Fragment>
               ))}
             </div>
           ))}
