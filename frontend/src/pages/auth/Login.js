@@ -29,9 +29,9 @@ export default function Login() {
       const normalizedEmail = String(email || '').toLowerCase().trim();
       await login(normalizedEmail, password);
       navigate(from, { replace: true });
+      /* Keep loading until unmount so the button does not flash “Sign in” while the dashboard loads. */
     } catch (err) {
       setError(getApiErrorMessage(err, 'Login failed'));
-    } finally {
       setLoading(false);
     }
   };

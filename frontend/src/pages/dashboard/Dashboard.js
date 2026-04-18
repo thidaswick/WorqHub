@@ -219,82 +219,105 @@ export default function Dashboard() {
     countThisMonth: 0,
   });
   const [loading, setLoading] = useState(true);
+  /** Secondary fetches (low stock, expenses) — don’t block charts / main stats after login. */
+  const [auxLoading, setAuxLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      workOrdersApi.list({ limit: 50, order: 'recent' }).catch(() => ({ data: [] })),
-      customersApi.list().catch(() => ({ data: [] })),
-      billingApi.listInvoices().catch(() => ({ data: [] })),
-      inventoryApi.lowStock({ threshold: LOW_STOCK_THRESHOLD, limit: 15 }).catch(() => ({ _failed: true })),
-      showExpensesInUi ? expensesApi.summary().catch(() => null) : Promise.resolve(null),
-    ]).then(([woRes, custRes, invRes, lowRes, exSumRes]) => {
-      const workOrders = Array.isArray(woRes?.data) ? woRes.data : woRes?.data?.data ?? [];
-      const workOrderListTotal =
-        typeof woRes?.total === 'number' ? woRes.total : Array.isArray(workOrders) ? workOrders.length : 0;
-      const customers = custRes.data?.data ?? custRes.data ?? [];
-      const invoices = invRes.data?.data ?? invRes.data ?? [];
-      const nonCancelled = invoices.filter((inv) => inv.status !== 'cancelled');
-      const revenueBilled = nonCancelled.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
-      const paidInvoices = invoices.filter((inv) => inv.status === 'paid');
-      const incomePaid = paidInvoices.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
-      const unpaid = nonCancelled.filter((inv) => inv.status !== 'paid');
-      const outstanding = unpaid.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
-      setActivityFeed(buildActivityFeedFromWorkOrders(workOrders, 10));
-      setMonthlyPaidChart(buildMonthlyPaidRevenue(invoices, 7));
-      setWorkOrderBarChart(buildWorkOrderStatusBars(workOrders));
-      setStats({
-        workOrders: workOrderListTotal,
-        customers: customers.length,
-        invoices: invoices.length,
-        revenueBilled,
-        incomePaid,
-        outstanding,
-        billedCount: nonCancelled.length,
-        paidCount: paidInvoices.length,
-        unpaidCount: unpaid.length,
-      });
-      const invSorted = [...invoices].sort(
-        (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-      );
-      setRecentInvoiceRows(
-        invSorted.slice(0, 8).map((inv) => ({
-          id: inv._id,
-          number: inv.number || '—',
-          customer: invoiceCustomerLabel(inv),
-          amount: inv.total != null ? formatMoneyLkr(inv.total) : '—',
-          time: formatInvoiceTableTime(inv.createdAt),
-          status: inv.status || 'draft',
-          statusLabel: INVOICE_STATUS_LABEL[inv.status] || inv.status || '—',
-          badgeClass: INVOICE_STATUS_CLASS[inv.status] || 'badge-draft',
-        }))
-      );
+    let cancelled = false;
 
-      if (lowRes?._failed) {
-        setLowStockError(true);
-      } else {
-        setLowStockError(false);
-        const lowPayload = lowRes?.data ?? lowRes;
-        if (lowPayload && typeof lowPayload.count === 'number') {
-          setLowStock({
-            count: lowPayload.count,
-            items: Array.isArray(lowPayload.items) ? lowPayload.items : [],
-            threshold: lowPayload.threshold ?? LOW_STOCK_THRESHOLD,
-          });
-        }
-      }
+    (async () => {
+      try {
+        const [woRes, custRes, invRes] = await Promise.all([
+          workOrdersApi.list({ limit: 50, order: 'recent' }).catch(() => ({ data: [] })),
+          customersApi.list().catch(() => ({ data: [] })),
+          billingApi.listInvoices().catch(() => ({ data: [] })),
+        ]);
+        if (cancelled) return;
 
-      if (showExpensesInUi) {
-        const exInner = exSumRes?.data;
-        if (exInner && typeof exInner.totalAllTime === 'number') {
-          setExpenseSummary({
-            totalAllTime: exInner.totalAllTime,
-            totalThisMonth: exInner.totalThisMonth,
-            countAllTime: exInner.countAllTime,
-            countThisMonth: exInner.countThisMonth,
-          });
+        const workOrders = Array.isArray(woRes?.data) ? woRes.data : woRes?.data?.data ?? [];
+        const workOrderListTotal =
+          typeof woRes?.total === 'number' ? woRes.total : Array.isArray(workOrders) ? workOrders.length : 0;
+        const customers = custRes.data?.data ?? custRes.data ?? [];
+        const invoices = invRes.data?.data ?? invRes.data ?? [];
+        const nonCancelled = invoices.filter((inv) => inv.status !== 'cancelled');
+        const revenueBilled = nonCancelled.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
+        const paidInvoices = invoices.filter((inv) => inv.status === 'paid');
+        const incomePaid = paidInvoices.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
+        const unpaid = nonCancelled.filter((inv) => inv.status !== 'paid');
+        const outstanding = unpaid.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
+        setActivityFeed(buildActivityFeedFromWorkOrders(workOrders, 10));
+        setMonthlyPaidChart(buildMonthlyPaidRevenue(invoices, 7));
+        setWorkOrderBarChart(buildWorkOrderStatusBars(workOrders));
+        setStats({
+          workOrders: workOrderListTotal,
+          customers: customers.length,
+          invoices: invoices.length,
+          revenueBilled,
+          incomePaid,
+          outstanding,
+          billedCount: nonCancelled.length,
+          paidCount: paidInvoices.length,
+          unpaidCount: unpaid.length,
+        });
+        const invSorted = [...invoices].sort(
+          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        );
+        setRecentInvoiceRows(
+          invSorted.slice(0, 8).map((inv) => ({
+            id: inv._id,
+            number: inv.number || '—',
+            customer: invoiceCustomerLabel(inv),
+            amount: inv.total != null ? formatMoneyLkr(inv.total) : '—',
+            time: formatInvoiceTableTime(inv.createdAt),
+            status: inv.status || 'draft',
+            statusLabel: INVOICE_STATUS_LABEL[inv.status] || inv.status || '—',
+            badgeClass: INVOICE_STATUS_CLASS[inv.status] || 'badge-draft',
+          }))
+        );
+
+        setLoading(false);
+
+        const [lowRes, exSumRes] = await Promise.all([
+          inventoryApi.lowStock({ threshold: LOW_STOCK_THRESHOLD, limit: 15 }).catch(() => ({ _failed: true })),
+          showExpensesInUi ? expensesApi.summary().catch(() => null) : Promise.resolve(null),
+        ]);
+        if (cancelled) return;
+
+        if (lowRes?._failed) {
+          setLowStockError(true);
+        } else {
+          setLowStockError(false);
+          const lowPayload = lowRes?.data ?? lowRes;
+          if (lowPayload && typeof lowPayload.count === 'number') {
+            setLowStock({
+              count: lowPayload.count,
+              items: Array.isArray(lowPayload.items) ? lowPayload.items : [],
+              threshold: lowPayload.threshold ?? LOW_STOCK_THRESHOLD,
+            });
+          }
         }
+
+        if (showExpensesInUi) {
+          const exInner = exSumRes?.data;
+          if (exInner && typeof exInner.totalAllTime === 'number') {
+            setExpenseSummary({
+              totalAllTime: exInner.totalAllTime,
+              totalThisMonth: exInner.totalThisMonth,
+              countAllTime: exInner.countAllTime,
+              countThisMonth: exInner.countThisMonth,
+            });
+          }
+        }
+      } catch {
+        if (!cancelled) setLoading(false);
+      } finally {
+        if (!cancelled) setAuxLoading(false);
       }
-    }).finally(() => setLoading(false));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleExport = () => {
@@ -442,7 +465,7 @@ export default function Dashboard() {
               <div className="dashboard-revenue-header">
                 <span className="dashboard-revenue-label">Expenses</span>
                 <span className="dashboard-revenue-badge">
-                  {loading
+                  {loading || auxLoading
                     ? '—'
                     : expenseSummary.countAllTime > 0
                       ? `${expenseSummary.countAllTime} recorded`
@@ -451,15 +474,15 @@ export default function Dashboard() {
               </div>
               <p className="dashboard-revenue-hint">Recorded expenses (all time)</p>
               <div className="dashboard-revenue-value">
-                {loading ? '—' : formatMoneyLkr(expenseSummary.totalAllTime)}
+                {loading || auxLoading ? '—' : formatMoneyLkr(expenseSummary.totalAllTime)}
                 <span className="dashboard-revenue-currency"> LKR</span>
               </div>
-              {!loading && expenseSummary.countThisMonth > 0 && (
+              {!loading && !auxLoading && expenseSummary.countThisMonth > 0 && (
                 <p className="dashboard-revenue-sub">
                   This month: {formatMoneyLkr(expenseSummary.totalThisMonth)} LKR
                 </p>
               )}
-              {!loading && (
+              {!loading && !auxLoading && (
                 <Link to="/expenses" className="dashboard-expenses-link">
                   Manage expenses
                 </Link>
@@ -471,15 +494,15 @@ export default function Dashboard() {
         <div className="dashboard-card dashboard-stack-card">
           <div className="dashboard-stack-card-section">
             <h3 className="dashboard-stack-card-heading">Inventory</h3>
-            {loading && (
+            {(loading || auxLoading) && (
               <p className="dashboard-stock-placeholder">Checking stock levels…</p>
             )}
-            {!loading && lowStockError && (
+            {!loading && !auxLoading && lowStockError && (
               <p className="dashboard-stock-placeholder dashboard-stock-placeholder--warn" role="status">
                 Could not load inventory. Try again or open Inventory.
               </p>
             )}
-            {!loading && !lowStockError && lowStock.count > 0 && (
+            {!loading && !auxLoading && !lowStockError && lowStock.count > 0 && (
               <div className="dashboard-low-stock-inline" role="alert">
                 <div className="dashboard-low-stock-inline-header">
                   <span className="dashboard-low-stock-inline-icon" aria-hidden>
@@ -517,7 +540,7 @@ export default function Dashboard() {
                 </Link>
               </div>
             )}
-            {!loading && !lowStockError && lowStock.count === 0 && (
+            {!loading && !auxLoading && !lowStockError && lowStock.count === 0 && (
               <div className="dashboard-stock-ok" role="status">
                 <span className="dashboard-stock-ok-title">Stock levels OK</span>
                 <p className="dashboard-stock-ok-text">
