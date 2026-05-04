@@ -130,10 +130,16 @@ const pathToTitle = {
 function getPageTitle(pathname) {
   if (pathToTitle[pathname]) return pathToTitle[pathname];
   if (/^\/work-orders\/[^/]+\/edit/.test(pathname)) return 'Edit work order';
+  if (/^\/work-orders\/(?!new$)[^/]+$/.test(pathname)) return 'Work order';
   if (/^\/customers\/[^/]+\/edit/.test(pathname)) return 'Edit customer';
+  if (/^\/customers\/(?!new$)[^/]+$/.test(pathname)) return 'Customer';
   if (/^\/inventory\/[^/]+\/edit/.test(pathname)) return 'Edit inventory item';
+  if (/^\/inventory\/(?!new$)[^/]+$/.test(pathname)) return 'Inventory item';
   if (/^\/employees\/[^/]+\/edit/.test(pathname)) return 'Edit employee';
+  if (/^\/employees\/(?!new$)[^/]+$/.test(pathname)) return 'Employee';
   if (/^\/expenses\/[^/]+\/edit/.test(pathname)) return 'Edit expense';
+  if (/^\/expenses\/(?!new$)[^/]+$/.test(pathname)) return 'Expense';
+  if (/^\/billing\/[^/]+\/edit/.test(pathname)) return 'Edit invoice';
   const base = pathname.split('/')[1];
   return pathToTitle[`/${base}`] || 'Dashboard';
 }

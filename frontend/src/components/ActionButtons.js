@@ -28,6 +28,7 @@ const IconDelete = () => (
 );
 
 export default function ActionButtons({ basePath, id, onDelete, itemName, onDownloadPdf }) {
+  const viewPath = `${basePath}/${id}`;
   const editPath = `${basePath}/${id}/edit`;
   const viewOpensPdf = typeof onDownloadPdf === 'function';
 
@@ -44,7 +45,7 @@ export default function ActionButtons({ basePath, id, onDelete, itemName, onDown
           <span>View</span>
         </button>
       ) : (
-        <Link to={editPath} className="btn btn-action btn-action-view" title="View details">
+        <Link to={viewPath} className="btn btn-action btn-action-view" title="View details (read-only)">
           <IconView />
           <span>View</span>
         </Link>

@@ -2,20 +2,20 @@
  * Inventory form: create new or edit existing.
  */
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import * as inventoryApi from '../../api/inventory';
+import { useRecordFormMode } from '../../hooks/useRecordFormMode';
 
 export default function InventoryForm() {
-  const { id } = useParams();
+  const { id, readOnly, isEditRoute, isCreate } = useRecordFormMode();
   const navigate = useNavigate();
-  const isEdit = Boolean(id);
 
-  const [loading, setLoading] = useState(isEdit);
+  const [loading, setLoading] = useState(!isCreate);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [skuLoading, setSkuLoading] = useState(!isEdit);
+  const [skuLoading, setSkuLoading] = useState(isCreate);
   const [form, setForm] = useState({
     categoryId: '',
     sku: '',
@@ -37,7 +37,7 @@ export default function InventoryForm() {
   }, []);
 
   useEffect(() => {
-    if (!isEdit) {
+    if (isCreate) {
       inventoryApi
         .suggestNextSku()
         .then((body) => {
@@ -47,10 +47,10 @@ export default function InventoryForm() {
         .catch(() => {})
         .finally(() => setSkuLoading(false));
     }
-  }, [isEdit]);
+  }, [isCreate]);
 
   useEffect(() => {
-    if (isEdit && id) {
+    if (id) {
       inventoryApi
         .get(id)
         .then((res) => {
@@ -70,12 +70,13 @@ export default function InventoryForm() {
         .catch((err) => setError(err.response?.data?.message || 'Failed to load item'))
         .finally(() => setLoading(false));
     }
-  }, [id, isEdit]);
+  }, [id]);
 
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (readOnly) return;
     setError('');
     if (!form.sku.trim()) {
       setError('SKU is required.');
@@ -94,7 +95,7 @@ export default function InventoryForm() {
       minQuantity: Number(form.minQuantity) || 0,
       location: form.location.trim() || undefined,
     };
-    const promise = isEdit ? inventoryApi.update(id, payload) : inventoryApi.create(payload);
+    const promise = isEditRoute ? inventoryApi.update(id, payload) : inventoryApi.create(payload);
     promise
       .then(() => navigate('/inventory'))
       .catch((err) => setError(err.response?.data?.message || 'Failed to save item'))
@@ -112,10 +113,19 @@ export default function InventoryForm() {
   return (
     <>
       <div className="page-toolbar">
-        <h2 className="page-title">{isEdit ? 'Edit item' : 'New inventory item'}</h2>
-        <Link to="/inventory" className="btn btn-secondary">
-          Back to list
-        </Link>
+        <h2 className="page-title">
+          {readOnly ? 'Inventory item' : isEditRoute ? 'Edit item' : 'New inventory item'}
+        </h2>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {readOnly && id ? (
+            <Link to={`/inventory/${id}/edit`} className="btn btn-primary">
+              Edit
+            </Link>
+          ) : null}
+          <Link to="/inventory" className="btn btn-secondary">
+            Back to list
+          </Link>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="card card-body" style={{ maxWidth: 560 }}>
@@ -130,7 +140,7 @@ export default function InventoryForm() {
               className="input"
               value={form.categoryId}
               onChange={(e) => update('categoryId', e.target.value)}
-              disabled={categoriesLoading}
+              disabled={readOnly || categoriesLoading}
             >
               <option value="">
                 {categoriesLoading ? 'Loading categories…' : 'Select a category (optional)'}
@@ -159,16 +169,16 @@ export default function InventoryForm() {
                 onChange={(e) => update('sku', e.target.value)}
                 placeholder={skuLoading ? 'Generating SKU…' : 'WIDGET-001'}
                 required
-                readOnly={isEdit || skuLoading}
+                readOnly={readOnly || isEditRoute || skuLoading}
                 disabled={skuLoading}
                 aria-busy={skuLoading}
               />
-              {!isEdit && !skuLoading && (
+              {isCreate && !skuLoading && (
                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                   Auto-generated (WIDGET-###). You can edit before saving if needed.
                 </p>
               )}
-              {isEdit && (
+              {isEditRoute && !readOnly && (
                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                   SKU cannot be changed when editing.
                 </p>
@@ -183,6 +193,7 @@ export default function InventoryForm() {
                 value={form.name}
                 onChange={(e) => update('name', e.target.value)}
                 placeholder="Product or part name"
+                readOnly={readOnly}
                 required
               />
             </div>
@@ -197,6 +208,7 @@ export default function InventoryForm() {
                 min={0}
                 value={form.quantity}
                 onChange={(e) => update('quantity', e.target.value)}
+                readOnly={readOnly}
               />
             </div>
             <div className="form-group">
@@ -208,6 +220,7 @@ export default function InventoryForm() {
                 min={0}
                 value={form.minQuantity}
                 onChange={(e) => update('minQuantity', e.target.value)}
+                readOnly={readOnly}
               />
             </div>
           </div>
@@ -220,17 +233,22 @@ export default function InventoryForm() {
               value={form.location}
               onChange={(e) => update('location', e.target.value)}
               placeholder="Warehouse, shelf, bin..."
+              readOnly={readOnly}
             />
           </div>
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Update item' : 'Add item'}
-          </button>
-          <Link to="/inventory" className="btn btn-secondary">
-            Cancel
-          </Link>
+          {!readOnly ? (
+            <>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : isEditRoute ? 'Update item' : 'Add item'}
+              </button>
+              <Link to="/inventory" className="btn btn-secondary">
+                Cancel
+              </Link>
+            </>
+          ) : null}
         </div>
       </form>
     </>

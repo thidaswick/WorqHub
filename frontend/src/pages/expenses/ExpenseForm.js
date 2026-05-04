@@ -2,8 +2,9 @@
  * Create or edit an expense (amount in LKR).
  */
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import * as expensesApi from '../../api/expenses';
+import { useRecordFormMode } from '../../hooks/useRecordFormMode';
 
 const CATEGORIES = [
   { value: 'supplies', label: 'Supplies' },
@@ -31,11 +32,10 @@ function todayInputDate() {
 }
 
 export default function ExpenseForm() {
-  const { id } = useParams();
+  const { id, readOnly, isEditRoute, isCreate } = useRecordFormMode();
   const navigate = useNavigate();
-  const isEdit = Boolean(id);
 
-  const [loading, setLoading] = useState(isEdit);
+  const [loading, setLoading] = useState(!isCreate);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
@@ -49,7 +49,7 @@ export default function ExpenseForm() {
   });
 
   useEffect(() => {
-    if (isEdit && id) {
+    if (!isCreate && id) {
       expensesApi
         .get(id)
         .then((res) => {
@@ -71,12 +71,13 @@ export default function ExpenseForm() {
         .catch((err) => setError(err.response?.data?.message || 'Failed to load expense'))
         .finally(() => setLoading(false));
     }
-  }, [id, isEdit]);
+  }, [id, isCreate]);
 
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (readOnly) return;
     setError('');
     const amt = Number(String(form.amount).replace(/,/g, ''));
     if (!Number.isFinite(amt) || amt < 0) {
@@ -103,7 +104,7 @@ export default function ExpenseForm() {
       notes: form.notes.trim() || undefined,
     };
 
-    const promise = isEdit ? expensesApi.update(id, payload) : expensesApi.create(payload);
+    const promise = isEditRoute ? expensesApi.update(id, payload) : expensesApi.create(payload);
     promise
       .then(() => navigate('/expenses'))
       .catch((err) => {
@@ -129,10 +130,19 @@ export default function ExpenseForm() {
   return (
     <>
       <div className="page-toolbar">
-        <h2 className="page-title">{isEdit ? 'Edit expense' : 'Record expense'}</h2>
-        <Link to="/expenses" className="btn btn-secondary">
-          Back to list
-        </Link>
+        <h2 className="page-title">
+          {readOnly ? 'Expense' : isEditRoute ? 'Edit expense' : 'Record expense'}
+        </h2>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {readOnly && id ? (
+            <Link to={`/expenses/${id}/edit`} className="btn btn-primary">
+              Edit
+            </Link>
+          ) : null}
+          <Link to="/expenses" className="btn btn-secondary">
+            Back to list
+          </Link>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="card card-body" style={{ maxWidth: 560 }}>
@@ -154,6 +164,7 @@ export default function ExpenseForm() {
               className="input"
               value={form.expenseDate}
               onChange={(e) => update('expenseDate', e.target.value)}
+              readOnly={readOnly}
               required
             />
           </div>
@@ -171,6 +182,7 @@ export default function ExpenseForm() {
               value={form.amount}
               onChange={(e) => update('amount', e.target.value)}
               placeholder="0.00"
+              readOnly={readOnly}
               required
             />
           </div>
@@ -183,6 +195,7 @@ export default function ExpenseForm() {
               className="input"
               value={form.category}
               onChange={(e) => update('category', e.target.value)}
+              disabled={readOnly}
             >
               {CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -202,6 +215,7 @@ export default function ExpenseForm() {
               value={form.description}
               onChange={(e) => update('description', e.target.value)}
               placeholder="What was paid for"
+              readOnly={readOnly}
             />
           </div>
           <div className="form-group">
@@ -215,6 +229,7 @@ export default function ExpenseForm() {
               value={form.vendor}
               onChange={(e) => update('vendor', e.target.value)}
               placeholder="Supplier or person"
+              readOnly={readOnly}
             />
           </div>
           <div className="form-group">
@@ -226,6 +241,7 @@ export default function ExpenseForm() {
               className="input"
               value={form.paymentMethod}
               onChange={(e) => update('paymentMethod', e.target.value)}
+              disabled={readOnly}
             >
               {PAYMENT_METHODS.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -245,14 +261,17 @@ export default function ExpenseForm() {
               value={form.notes}
               onChange={(e) => update('notes', e.target.value)}
               placeholder="Optional internal notes"
+              readOnly={readOnly}
             />
           </div>
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Record expense'}
-          </button>
+          {!readOnly ? (
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Saving…' : isEditRoute ? 'Save changes' : 'Record expense'}
+            </button>
+          ) : null}
         </div>
       </form>
     </>

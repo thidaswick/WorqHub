@@ -2,15 +2,15 @@
  * Employee form: create new or edit existing.
  */
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import * as employeesApi from '../../api/employees';
+import { useRecordFormMode } from '../../hooks/useRecordFormMode';
 
 export default function EmployeeForm() {
-  const { id } = useParams();
+  const { id, readOnly, isEditRoute, isCreate } = useRecordFormMode();
   const navigate = useNavigate();
-  const isEdit = Boolean(id);
 
-  const [loading, setLoading] = useState(isEdit);
+  const [loading, setLoading] = useState(!isCreate);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
@@ -28,7 +28,7 @@ export default function EmployeeForm() {
   });
 
   useEffect(() => {
-    if (isEdit && id) {
+    if (!isCreate && id) {
       employeesApi
         .get(id)
         .then((res) => {
@@ -50,12 +50,13 @@ export default function EmployeeForm() {
         .catch((err) => setError(err.response?.data?.message || 'Failed to load employee'))
         .finally(() => setLoading(false));
     }
-  }, [id, isEdit]);
+  }, [id, isCreate]);
 
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (readOnly) return;
     setError('');
     if (!form.name.trim()) {
       setError('Name is required.');
@@ -75,7 +76,7 @@ export default function EmployeeForm() {
       notes: form.notes.trim() || undefined,
       photoUrl: form.photoUrl.trim() || undefined,
     };
-    const promise = isEdit ? employeesApi.update(id, payload) : employeesApi.create(payload);
+    const promise = isEditRoute ? employeesApi.update(id, payload) : employeesApi.create(payload);
     promise
       .then(() => navigate('/employees'))
       .catch((err) => setError(err.response?.data?.message || 'Failed to save employee'))
@@ -93,10 +94,19 @@ export default function EmployeeForm() {
   return (
     <>
       <div className="page-toolbar">
-        <h2 className="page-title">{isEdit ? 'Edit employee' : 'New employee'}</h2>
-        <Link to="/employees" className="btn btn-secondary">
-          Back to list
-        </Link>
+        <h2 className="page-title">
+          {readOnly ? 'Employee' : isEditRoute ? 'Edit employee' : 'New employee'}
+        </h2>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {readOnly && id ? (
+            <Link to={`/employees/${id}/edit`} className="btn btn-primary">
+              Edit
+            </Link>
+          ) : null}
+          <Link to="/employees" className="btn btn-secondary">
+            Back to list
+          </Link>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="card card-body" style={{ maxWidth: 560 }}>
@@ -113,23 +123,25 @@ export default function EmployeeForm() {
                 </div>
               )}
               <div className="employee-photo-inputs">
-                <label className="btn btn-secondary employee-photo-file-btn">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = () => update('photoUrl', reader.result);
-                        reader.readAsDataURL(file);
-                      }
-                      e.target.value = '';
-                    }}
-                    style={{ display: 'none' }}
-                  />
-                  {form.photoUrl ? 'Change photo' : 'Upload photo'}
-                </label>
+                {!readOnly ? (
+                  <label className="btn btn-secondary employee-photo-file-btn">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => update('photoUrl', reader.result);
+                          reader.readAsDataURL(file);
+                        }
+                        e.target.value = '';
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                    {form.photoUrl ? 'Change photo' : 'Upload photo'}
+                  </label>
+                ) : null}
               </div>
             </div>
           </div>
@@ -145,7 +157,7 @@ export default function EmployeeForm() {
               className="input"
               value={form.employeeId}
               readOnly
-              placeholder={isEdit ? '' : 'Auto-generated (e.g. EMP 0001)'}
+              placeholder={!isCreate ? '' : 'Auto-generated (e.g. EMP 0001)'}
             />
           </div>
           <div className="form-row">
@@ -158,6 +170,7 @@ export default function EmployeeForm() {
                 value={form.name}
                 onChange={(e) => update('name', e.target.value)}
                 placeholder="Full name"
+                readOnly={readOnly}
                 required
               />
             </div>
@@ -172,6 +185,7 @@ export default function EmployeeForm() {
                 value={form.department}
                 onChange={(e) => update('department', e.target.value)}
                 placeholder="e.g. Sales, Operations"
+                readOnly={readOnly}
               />
             </div>
             <div className="form-group">
@@ -183,6 +197,7 @@ export default function EmployeeForm() {
                 value={form.position}
                 onChange={(e) => update('position', e.target.value)}
                 placeholder="Job title"
+                readOnly={readOnly}
               />
             </div>
           </div>
@@ -194,6 +209,7 @@ export default function EmployeeForm() {
                 className="input"
                 value={form.status}
                 onChange={(e) => update('status', e.target.value)}
+                disabled={readOnly}
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -208,6 +224,7 @@ export default function EmployeeForm() {
                 className="input"
                 value={form.joinDate}
                 onChange={(e) => update('joinDate', e.target.value)}
+                readOnly={readOnly}
               />
             </div>
           </div>
@@ -225,6 +242,7 @@ export default function EmployeeForm() {
                 value={form.email}
                 onChange={(e) => update('email', e.target.value)}
                 placeholder="email@example.com"
+                readOnly={readOnly}
               />
             </div>
             <div className="form-group">
@@ -236,6 +254,7 @@ export default function EmployeeForm() {
                 value={form.phone}
                 onChange={(e) => update('phone', e.target.value)}
                 placeholder="+1 234 567 8900"
+                readOnly={readOnly}
               />
             </div>
           </div>
@@ -253,6 +272,7 @@ export default function EmployeeForm() {
               onChange={(e) => update('address', e.target.value)}
               placeholder="Street, city, postal code"
               style={{ resize: 'vertical' }}
+              readOnly={readOnly}
             />
           </div>
           <div className="form-group">
@@ -265,17 +285,22 @@ export default function EmployeeForm() {
               onChange={(e) => update('notes', e.target.value)}
               placeholder="Internal notes..."
               style={{ resize: 'vertical' }}
+              readOnly={readOnly}
             />
           </div>
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Update employee' : 'Add employee'}
-          </button>
-          <Link to="/employees" className="btn btn-secondary">
-            Cancel
-          </Link>
+          {!readOnly ? (
+            <>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : isEditRoute ? 'Update employee' : 'Add employee'}
+              </button>
+              <Link to="/employees" className="btn btn-secondary">
+                Cancel
+              </Link>
+            </>
+          ) : null}
         </div>
       </form>
     </>

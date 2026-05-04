@@ -41,23 +41,28 @@ export function AppRoutes() {
         <Route path="work-orders" element={<WorkOrders />} />
         <Route path="work-orders/new" element={<WorkOrderForm />} />
         <Route path="work-orders/:id/edit" element={<WorkOrderForm />} />
+        <Route path="work-orders/:id" element={<WorkOrderForm />} />
         <Route path="customers" element={<Customers />} />
         <Route path="customers/new" element={<CustomerForm />} />
         <Route path="customers/:id/edit" element={<CustomerForm />} />
+        <Route path="customers/:id" element={<CustomerForm />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="inventory/categories/register" element={<InventoryCategoriesRegister />} />
         <Route path="inventory/new" element={<InventoryForm />} />
         <Route path="inventory/:id/edit" element={<InventoryForm />} />
+        <Route path="inventory/:id" element={<InventoryForm />} />
         <Route path="billing" element={<Billing />} />
         <Route path="billing/new" element={<InvoiceForm />} />
         <Route path="billing/:id/edit" element={<InvoiceForm />} />
         <Route path="employees" element={<Employees />} />
         <Route path="employees/new" element={<EmployeeForm />} />
         <Route path="employees/:id/edit" element={<EmployeeForm />} />
+        <Route path="employees/:id" element={<EmployeeForm />} />
         <Route path="reports" element={<Reports />} />
         <Route path="expenses" element={<Expenses />} />
         <Route path="expenses/new" element={<ExpenseForm />} />
         <Route path="expenses/:id/edit" element={<ExpenseForm />} />
+        <Route path="expenses/:id" element={<ExpenseForm />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

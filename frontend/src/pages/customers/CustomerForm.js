@@ -2,15 +2,15 @@
  * Customer form: create new or edit existing.
  */
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import * as customersApi from '../../api/customers';
+import { useRecordFormMode } from '../../hooks/useRecordFormMode';
 
 export default function CustomerForm() {
-  const { id } = useParams();
+  const { id, readOnly, isEditRoute, isCreate } = useRecordFormMode();
   const navigate = useNavigate();
-  const isEdit = Boolean(id);
 
-  const [loading, setLoading] = useState(isEdit);
+  const [loading, setLoading] = useState(!isCreate);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
@@ -24,7 +24,7 @@ export default function CustomerForm() {
   });
 
   useEffect(() => {
-    if (isEdit && id) {
+    if (!isCreate && id) {
       customersApi
         .get(id)
         .then((res) => {
@@ -42,12 +42,13 @@ export default function CustomerForm() {
         .catch((err) => setError(err.response?.data?.message || 'Failed to load customer'))
         .finally(() => setLoading(false));
     }
-  }, [id, isEdit]);
+  }, [id, isCreate]);
 
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (readOnly) return;
     setError('');
     if (!form.name.trim()) {
       setError('Name is required.');
@@ -62,7 +63,7 @@ export default function CustomerForm() {
       billingAddress: form.billingAddress.trim() || undefined,
       notes: form.notes.trim() || undefined,
     };
-    const promise = isEdit ? customersApi.update(id, payload) : customersApi.create(payload);
+    const promise = isEditRoute ? customersApi.update(id, payload) : customersApi.create(payload);
     promise
       .then(() => navigate('/customers'))
       .catch((err) => setError(err.response?.data?.message || 'Failed to save customer'))
@@ -80,10 +81,19 @@ export default function CustomerForm() {
   return (
     <>
       <div className="page-toolbar">
-        <h2 className="page-title">{isEdit ? 'Edit customer' : 'New customer'}</h2>
-        <Link to="/customers" className="btn btn-secondary">
-          Back to list
-        </Link>
+        <h2 className="page-title">
+          {readOnly ? 'Customer' : isEditRoute ? 'Edit customer' : 'New customer'}
+        </h2>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {readOnly && id ? (
+            <Link to={`/customers/${id}/edit`} className="btn btn-primary">
+              Edit
+            </Link>
+          ) : null}
+          <Link to="/customers" className="btn btn-secondary">
+            Back to list
+          </Link>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="card card-body" style={{ maxWidth: 560 }}>
@@ -91,7 +101,7 @@ export default function CustomerForm() {
 
         <div className="form-section">
           <h3 className="form-section-title">Contact</h3>
-          {isEdit && form.customerCode ? (
+          {(isEditRoute || readOnly) && form.customerCode ? (
             <div className="form-group">
               <label className="label" htmlFor="customerCode">Customer ID</label>
               <input
@@ -114,6 +124,7 @@ export default function CustomerForm() {
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
               placeholder="Company or contact name"
+              readOnly={readOnly}
               required
             />
           </div>
@@ -127,6 +138,7 @@ export default function CustomerForm() {
                 value={form.email}
                 onChange={(e) => update('email', e.target.value)}
                 placeholder="email@example.com"
+                readOnly={readOnly}
               />
             </div>
             <div className="form-group">
@@ -138,6 +150,7 @@ export default function CustomerForm() {
                 value={form.phone}
                 onChange={(e) => update('phone', e.target.value)}
                 placeholder="+1 234 567 8900"
+                readOnly={readOnly}
               />
             </div>
           </div>
@@ -155,6 +168,7 @@ export default function CustomerForm() {
               onChange={(e) => update('address', e.target.value)}
               placeholder="Street, city, postal code"
               style={{ resize: 'vertical' }}
+              readOnly={readOnly}
             />
           </div>
           <div className="form-group">
@@ -167,6 +181,7 @@ export default function CustomerForm() {
               onChange={(e) => update('billingAddress', e.target.value)}
               placeholder="If different from address"
               style={{ resize: 'vertical' }}
+              readOnly={readOnly}
             />
           </div>
         </div>
@@ -182,17 +197,22 @@ export default function CustomerForm() {
               onChange={(e) => update('notes', e.target.value)}
               placeholder="Internal notes..."
               style={{ resize: 'vertical' }}
+              readOnly={readOnly}
             />
           </div>
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Update customer' : 'Add customer'}
-          </button>
-          <Link to="/customers" className="btn btn-secondary">
-            Cancel
-          </Link>
+          {!readOnly ? (
+            <>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : isEditRoute ? 'Update customer' : 'Add customer'}
+              </button>
+              <Link to="/customers" className="btn btn-secondary">
+                Cancel
+              </Link>
+            </>
+          ) : null}
         </div>
       </form>
     </>

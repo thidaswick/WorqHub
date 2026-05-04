@@ -596,7 +596,7 @@ export default function Dashboard() {
                       <td>{row.employee}</td>
                       <td>
                         {row.id ? (
-                          <Link to={`/work-orders/${row.id}/edit`} className="dashboard-activity-desc-link">
+                          <Link to={`/work-orders/${row.id}`} className="dashboard-activity-desc-link">
                             {row.desc}
                           </Link>
                         ) : (

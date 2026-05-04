@@ -334,6 +334,15 @@ export default function InvoiceForm() {
       setError('Add at least one line item with a description.');
       return;
     }
+    if (!isEdit && form.customerId) {
+      const hasWoItems = customerWoItems.some((x) => Number(x.quantity) > 0);
+      if (!hasWoItems) {
+        setError(
+          'Record at least one line item on a work order for this customer before raising an invoice.'
+        );
+        return;
+      }
+    }
     setSaving(true);
     const payload = buildPayload();
     const promise = isEdit ? billingApi.updateInvoice(id, payload) : billingApi.createInvoice(payload);

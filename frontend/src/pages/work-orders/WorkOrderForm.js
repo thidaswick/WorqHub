@@ -2,8 +2,9 @@
  * Work order form: create new or edit existing.
  */
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import * as workOrdersApi from '../../api/workOrders';
+import { useRecordFormMode } from '../../hooks/useRecordFormMode';
 import * as customersApi from '../../api/customers';
 import * as employeesApi from '../../api/employees';
 import * as inventoryApi from '../../api/inventory';
@@ -52,12 +53,25 @@ function inventoryItemsForCategory(allItems, categoryId) {
   );
 }
 
-export default function WorkOrderForm() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const isEdit = Boolean(id);
+/** Max quantity this line may use; remaining stock minus other lines with the same inventory item. */
+function maxUsableQtyForLine(items, lineIndex, inventoryId, invRecord) {
+  if (!inventoryId || !invRecord) return null;
+  const stock = Number(invRecord.quantity) || 0;
+  let other = 0;
+  for (let j = 0; j < items.length; j++) {
+    if (j === lineIndex) continue;
+    if (String(items[j].inventoryId) === String(inventoryId)) {
+      other += Number(items[j].quantity) || 0;
+    }
+  }
+  return Math.max(0, stock - other);
+}
 
-  const [loading, setLoading] = useState(isEdit);
+export default function WorkOrderForm() {
+  const { id, readOnly, isEditRoute, isCreate } = useRecordFormMode();
+  const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(!isCreate);
   const [customersLoading, setCustomersLoading] = useState(true);
   const [customers, setCustomers] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
@@ -114,7 +128,7 @@ export default function WorkOrderForm() {
   }, []);
 
   useEffect(() => {
-    if (isEdit && id) {
+    if (!isCreate && id) {
       workOrdersApi
         .get(id)
         .then((res) => {
@@ -160,7 +174,7 @@ export default function WorkOrderForm() {
         .catch((err) => setError(err.response?.data?.message || 'Failed to load work order'))
         .finally(() => setLoading(false));
     }
-  }, [id, isEdit]);
+  }, [id, isCreate]);
 
   const employeesSorted = useMemo(
     () =>
@@ -178,12 +192,25 @@ export default function WorkOrderForm() {
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
   const updateItem = (index, field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      items: prev.items.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      ),
-    }));
+    setForm((prev) => {
+      let nextVal = value;
+      if (field === 'quantity' && prev.items[index]?.inventoryId) {
+        const inv = inventoryItems.find(
+          (x) => String(x._id) === String(prev.items[index].inventoryId)
+        );
+        const cap = maxUsableQtyForLine(prev.items, index, prev.items[index].inventoryId, inv);
+        if (cap != null) {
+          const n = Number(value);
+          if (Number.isFinite(n) && n > cap) nextVal = cap;
+        }
+      }
+      return {
+        ...prev,
+        items: prev.items.map((item, i) =>
+          i === index ? { ...item, [field]: nextVal } : item
+        ),
+      };
+    });
   };
 
   const handleItemCategoryChange = (index, categoryId) => {
@@ -273,6 +300,7 @@ export default function WorkOrderForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (readOnly) return;
     setError('');
     if (!form.customerId.trim()) {
       setError('Customer is required.');
@@ -282,9 +310,22 @@ export default function WorkOrderForm() {
       setError('Title is required.');
       return;
     }
+    for (let i = 0; i < form.items.length; i++) {
+      const it = form.items[i];
+      if (!it.name?.trim() || !it.inventoryId) continue;
+      const inv = inventoryItems.find((x) => String(x._id) === String(it.inventoryId));
+      const cap = maxUsableQtyForLine(form.items, i, it.inventoryId, inv);
+      const q = Number(it.quantity) || 0;
+      if (cap != null && q > cap) {
+        setError(
+          `Quantity for "${String(inv?.name || '').trim() || 'item'}" cannot exceed ${cap} (in stock for this work order).`
+        );
+        return;
+      }
+    }
     setSaving(true);
     const payload = buildPayload();
-    const promise = isEdit ? workOrdersApi.update(id, payload) : workOrdersApi.create(payload);
+    const promise = isEditRoute ? workOrdersApi.update(id, payload) : workOrdersApi.create(payload);
     promise
       .then(() => navigate('/work-orders'))
       .catch((err) => setError(err.response?.data?.message || 'Failed to save work order'))
@@ -302,13 +343,27 @@ export default function WorkOrderForm() {
   return (
     <>
       <div className="page-toolbar">
-        <h2 className="page-title">{isEdit ? 'Edit work order' : 'New work order'}</h2>
-        <Link to="/work-orders" className="btn btn-secondary">
-          Back to list
-        </Link>
+        <h2 className="page-title">
+          {readOnly ? 'Work order' : isEditRoute ? 'Edit work order' : 'New work order'}
+        </h2>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {readOnly && id ? (
+            <Link to={`/work-orders/${id}/edit`} className="btn btn-primary">
+              Edit
+            </Link>
+          ) : null}
+          <Link to="/work-orders" className="btn btn-secondary">
+            Back to list
+          </Link>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="card card-body" style={{ maxWidth: 840 }}>
+      <form
+        onSubmit={handleSubmit}
+        className="card card-body"
+        style={{ maxWidth: 840 }}
+        aria-readonly={readOnly || undefined}
+      >
         {error && <div className="form-error" role="alert">{error}</div>}
 
         <div className="form-section">
@@ -320,7 +375,7 @@ export default function WorkOrderForm() {
               className="input"
               value={form.customerId}
               onChange={(e) => update('customerId', e.target.value)}
-              disabled={customersLoading || customers.length === 0}
+              disabled={readOnly || customersLoading || customers.length === 0}
               required
             >
               <option value="">{customersLoading ? 'Loading customers…' : 'Select a customer'}</option>
@@ -362,7 +417,7 @@ export default function WorkOrderForm() {
                     const v = e.target.value;
                     if (v) addAssignedEmployeeFromDropdown(v);
                   }}
-                  disabled={employeesAvailableForPicker.length === 0}
+                  disabled={readOnly || employeesAvailableForPicker.length === 0}
                 >
                   <option value="">
                     {employeesAvailableForPicker.length === 0
@@ -399,6 +454,7 @@ export default function WorkOrderForm() {
                             type="button"
                             className="work-order-assign-chip-remove"
                             onClick={() => removeAssignedEmployee(empId)}
+                            disabled={readOnly}
                             aria-label={`Remove ${label} from this work order`}
                           >
                             ×
@@ -421,6 +477,7 @@ export default function WorkOrderForm() {
               value={form.title}
               onChange={(e) => update('title', e.target.value)}
               placeholder="e.g. Repair AC unit"
+              readOnly={readOnly}
               required
             />
           </div>
@@ -434,6 +491,7 @@ export default function WorkOrderForm() {
               onChange={(e) => update('description', e.target.value)}
               placeholder="Job details..."
               style={{ resize: 'vertical' }}
+              readOnly={readOnly}
             />
           </div>
           <div className="form-row">
@@ -444,6 +502,7 @@ export default function WorkOrderForm() {
                 className="input"
                 value={form.status}
                 onChange={(e) => update('status', e.target.value)}
+                disabled={readOnly}
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -457,6 +516,7 @@ export default function WorkOrderForm() {
                 className="input"
                 value={form.priority}
                 onChange={(e) => update('priority', e.target.value)}
+                disabled={readOnly}
               >
                 {PRIORITY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -471,6 +531,7 @@ export default function WorkOrderForm() {
                 className="input"
                 value={form.scheduledAt}
                 onChange={(e) => update('scheduledAt', e.target.value)}
+                readOnly={readOnly}
               />
             </div>
           </div>
@@ -491,6 +552,10 @@ export default function WorkOrderForm() {
               item.categoryId &&
               !nameMatch &&
               String(item.name).trim();
+            const maxForLine =
+              nameMatch && item.inventoryId
+                ? maxUsableQtyForLine(form.items, index, item.inventoryId, nameMatch)
+                : null;
 
             return (
               <div key={index} className="repeatable-row work-order-item-repeatable">
@@ -505,7 +570,7 @@ export default function WorkOrderForm() {
                         className="input"
                         value={item.categoryId || ''}
                         onChange={(e) => handleItemCategoryChange(index, e.target.value)}
-                        disabled={categoriesLoading || categories.length === 0}
+                        disabled={readOnly || categoriesLoading || categories.length === 0}
                       >
                         <option value="">
                           {categoriesLoading
@@ -531,6 +596,7 @@ export default function WorkOrderForm() {
                         value={inventorySelectValue}
                         onChange={(e) => handleItemInventoryChange(index, e.target.value)}
                         disabled={
+                          readOnly ||
                           inventoryItemsLoading ||
                           !item.categoryId ||
                           rowItems.length === 0
@@ -571,13 +637,16 @@ export default function WorkOrderForm() {
                         className="input"
                         placeholder="Qty"
                         min={0}
+                        max={maxForLine != null ? maxForLine : undefined}
                         value={item.quantity}
                         onChange={(e) => updateItem(index, 'quantity', e.target.value)}
                         style={{ width: 96 }}
+                        readOnly={readOnly}
                       />
                       {nameMatch && item.inventoryId ? (
                         <p className="form-hint work-order-item-stock-hint" style={{ marginTop: '0.35rem' }}>
                           In stock: {Number(nameMatch.quantity) || 0}
+                          {maxForLine != null ? ` · Max for this line: ${maxForLine}` : null}
                         </p>
                       ) : null}
                     </div>
@@ -587,7 +656,7 @@ export default function WorkOrderForm() {
                   type="button"
                   className="btn btn-ghost"
                   onClick={() => removeItem(index)}
-                  disabled={form.items.length <= 1}
+                  disabled={readOnly || form.items.length <= 1}
                   aria-label="Remove item"
                 >
                   Remove
@@ -595,18 +664,24 @@ export default function WorkOrderForm() {
               </div>
             );
           })}
-          <button type="button" className="btn btn-secondary repeatable-add" onClick={addItem}>
-            + Add item
-          </button>
+          {!readOnly ? (
+            <button type="button" className="btn btn-secondary repeatable-add" onClick={addItem}>
+              + Add item
+            </button>
+          ) : null}
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Update' : 'Create work order'}
-          </button>
-          <Link to="/work-orders" className="btn btn-secondary">
-            Cancel
-          </Link>
+          {!readOnly ? (
+            <>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : isEditRoute ? 'Update' : 'Create work order'}
+              </button>
+              <Link to="/work-orders" className="btn btn-secondary">
+                Cancel
+              </Link>
+            </>
+          ) : null}
         </div>
       </form>
     </>

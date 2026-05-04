@@ -3,6 +3,7 @@
  */
 const mongoose = require('mongoose');
 const Invoice = require('../models/Invoice');
+const WorkOrder = require('../models/WorkOrder');
 const InvoiceCounter = require('../models/InvoiceCounter');
 const Tenant = require('../models/Tenant');
 const asyncHandler = require('../utils/asyncHandler');
@@ -14,6 +15,24 @@ function assertMongoObjectId(id, label = 'id') {
   if (!mongoose.isValidObjectId(id)) {
     throw new ApiError(400, `Invalid ${label}`);
   }
+}
+
+async function assertCustomerHasBillableWorkOrderItems(tenantId, customerId) {
+  if (!customerId || !mongoose.isValidObjectId(String(customerId))) {
+    throw new ApiError(400, 'Customer is required');
+  }
+  const cid = new mongoose.Types.ObjectId(String(customerId));
+  const wos = await WorkOrder.find({ tenantId, customerId: cid }).select('items').lean();
+  for (const wo of wos) {
+    for (const it of wo.items || []) {
+      const q = Number(it.quantity) || 0;
+      if (q > 0 && String(it.name || '').trim()) return;
+    }
+  }
+  throw new ApiError(
+    400,
+    'Add at least one line item on a work order for this customer before creating an invoice.'
+  );
 }
 
 function lineItemRowTotal(r) {
@@ -56,6 +75,23 @@ async function syncInvoiceCounterFromDb(tenantId) {
 
 exports.list = asyncHandler(async (req, res) => {
   const filter = { tenantId: req.tenantId };
+  const { createdFrom, createdTo } = req.query;
+  if (createdFrom || createdTo) {
+    const range = {};
+    if (createdFrom) {
+      const from = new Date(createdFrom);
+      if (!Number.isNaN(from.getTime())) range.$gte = from;
+    }
+    if (createdTo) {
+      const to = new Date(createdTo);
+      if (!Number.isNaN(to.getTime())) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        range.$lte = end;
+      }
+    }
+    if (Object.keys(range).length) filter.createdAt = range;
+  }
   const items = await Invoice.find(filter)
     .sort({ createdAt: -1 })
     .populate({ path: 'customerId', select: 'name email' })
@@ -110,6 +146,12 @@ exports.create = asyncHandler(async (req, res) => {
   delete body.invoiceSeq;
   delete body.number;
 
+  if (body.customerId) {
+    await assertCustomerHasBillableWorkOrderItems(req.tenantId, body.customerId);
+  } else {
+    throw new ApiError(400, 'Customer is required');
+  }
+
   await syncInvoiceCounterFromDb(req.tenantId);
   const counter = await InvoiceCounter.findOneAndUpdate(
     { tenantId: req.tenantId },
@@ -129,6 +171,9 @@ exports.update = asyncHandler(async (req, res) => {
   if (body.customerId === '' || body.customerId == null) body.customerId = undefined;
   delete body.invoiceSeq;
   delete body.number;
+  if (body.customerId != null) {
+    await assertCustomerHasBillableWorkOrderItems(req.tenantId, body.customerId);
+  }
   const normalized = normalizeInvoiceTotals(body);
   const doc = await Invoice.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.tenantId },
