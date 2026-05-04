@@ -62,7 +62,12 @@ export default function WorkOrders() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const params = employeeIdFilter ? { employeeId: employeeIdFilter } : undefined;
+    /** Newest first; API default is WO# ascending, limit 20, no pagination — new orders were often off page 1. */
+    const params = {
+      order: 'recent',
+      limit: 200,
+      ...(employeeIdFilter ? { employeeId: employeeIdFilter } : {}),
+    };
     Promise.all([workOrdersApi.list(params), customersApi.list().catch(() => ({ data: [] }))])
       .then(([woBody, custBody]) => {
         const rows = woBody?.data ?? woBody;
